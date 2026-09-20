@@ -1,0 +1,13 @@
+[Unit]
+Description=VGrop public market data collector
+After=network-online.target
+[Service]
+Type=oneshot
+User=vgrop
+WorkingDirectory=/opt/vgrop-market/backend/v2
+EnvironmentFile=/etc/vgrop-market.env
+ExecStart=/opt/vgrop-market/.venv/bin/python collect.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true

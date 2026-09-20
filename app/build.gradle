@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+def compatibilityKey = rootProject.file("debug.keystore")
+if (!compatibilityKey.exists() && rootProject.file("debug.keystore.base64").exists()) {
+    compatibilityKey.bytes = rootProject.file("debug.keystore.base64").text.trim().decodeBase64()
+}
+
+android {
+    namespace 'com.v2grop.lbankpulse'
+    compileSdk 35
+    buildToolsVersion '35.0.1'
+
+    defaultConfig {
+        applicationId 'com.v2grop.lbankpulse'
+        minSdk 31
+        targetSdk 35
+        versionCode 14
+        versionName '0.14.0'
+    }
+
+    signingConfigs {
+        debug {
+            storeFile rootProject.file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

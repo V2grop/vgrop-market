@@ -1,0 +1,4 @@
+# Replace hostname and run Caddy on the same host as server.py.
+api.example.com {
+    reverse_proxy 127.0.0.1:8080
+}

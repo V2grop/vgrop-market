@@ -1,0 +1,78 @@
+{
+  "status": "research_only_not_promoted",
+  "folds": [
+    {
+      "train_end": 1788314400000,
+      "test_start": 1788318000000,
+      "temperature": 1,
+      "samples": 10
+    },
+    {
+      "train_end": 1788494400000,
+      "test_start": 1788498000000,
+      "temperature": 1,
+      "samples": 10
+    },
+    {
+      "train_end": 1788674400000,
+      "test_start": 1788678000000,
+      "temperature": 1,
+      "samples": 10
+    },
+    {
+      "train_end": 1788854400000,
+      "test_start": 1788858000000,
+      "temperature": 0.75,
+      "samples": 10
+    },
+    {
+      "train_end": 1789034400000,
+      "test_start": 1789038000000,
+      "temperature": 0.75,
+      "samples": 10
+    },
+    {
+      "train_end": 1789214400000,
+      "test_start": 1789218000000,
+      "temperature": 0.75,
+      "samples": 10
+    },
+    {
+      "train_end": 1789394400000,
+      "test_start": 1789398000000,
+      "temperature": 1,
+      "samples": 10
+    },
+    {
+      "train_end": 1789574400000,
+      "test_start": 1789578000000,
+      "temperature": 1,
+      "samples": 10
+    },
+    {
+      "train_end": 1789754400000,
+      "test_start": 1789758000000,
+      "temperature": 1,
+      "samples": 10
+    }
+  ],
+  "test_samples": 90,
+  "brier": 0.5227084076872403,
+  "raw_brier": 0.5149888888888888,
+  "past_frequency_baseline_brier": 0.48419954447530805,
+  "mean_net_return_pct_per_sample": -0.05590754563926088,
+  "cost_bps_round_trip": 20,
+  "limits": "Single asset; fixed heuristic; no slippage model beyond fixed cost, no liquidity/funding model; not evidence of general performance.",
+  "provenance": {
+    "source": "https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1000",
+    "retrieved_at": "2026-09-20T21:20:21.821138+00:00",
+    "input_sha256": "46d370ce7843d99e89c84645f6f519660e554e02224c32562195f13ab4861462",
+    "closed_candles": 999,
+    "first_timestamp": "1786341600000",
+    "last_timestamp": "1789934400000",
+    "model": "vgrop-adaptive-1",
+    "label": "next-open to horizon close; neutral +/-0.5 trailing ATR14 * sqrt(horizon) / last close",
+    "sampling": "4h horizon,5h step, minimum400 previous candles",
+    "universe": "BTC spot only; no asset selection or parameter tuning on this holdout"
+  }
+}

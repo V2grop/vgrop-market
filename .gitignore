@@ -1,0 +1,16 @@
+build/
+.gradle/
+local.properties
+__pycache__/
+*.pyc
+.env
+*.db
+*.sqlite*
+*.apk
+*.idsig
+*.zip
+.venv/
+*.jks
+# Compatibility testing key is deliberately public; never use it for production.
+
+debug.keystore

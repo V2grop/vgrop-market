@@ -1,0 +1,59 @@
+name: Android build and release
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android packages
+        run: '$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.1"'
+      - name: Build signed compatibility APK
+        run: bash build-direct.sh
+      - name: Test engines and data validation
+        run: bash scripts/test.sh
+      - name: Test optional API
+        run: |
+          python3 -m pip install -r backend/v2/requirements.txt
+          python3 -m unittest discover -s backend/v2 -p 'test_*.py'
+      - name: Source archive
+        run: |
+          git archive --format=zip --output=build/VGrop-market-source.zip HEAD
+          sha256sum build/direct/*-debug.apk build/VGrop-market-source.zip > build/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VGrop-market
+          path: |
+            build/direct/*-debug.apk
+            build/VGrop-market-source.zip
+            build/SHA256SUMS
+  release:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: VGrop-market
+          path: artifacts
+      - name: Publish tested prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v0.14.0' }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then exit 0; fi
+          gh release create "$RELEASE_TAG" artifacts/direct/*-debug.apk artifacts/VGrop-market-source.zip artifacts/SHA256SUMS --target "$GITHUB_SHA" --prerelease --title "VGrop Market $RELEASE_TAG" --notes-file RELEASE-v0.14.md

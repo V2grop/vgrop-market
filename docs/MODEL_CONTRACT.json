@@ -1,0 +1,10 @@
+{
+  "schema_version": "vgrop-features-1",
+  "feature_order": ["ema50", "ema200", "rsi14", "macd", "macd_signal", "atr14", "efficiency", "momentum", "support", "resistance", "volume_ratio", "btc_context"],
+  "missing": "null with explicit mask; never silently zero-fill",
+  "required_artifact_metadata": ["sha256", "runtime", "input_shape", "normalization_fit_cutoff", "training_cutoff", "calibration_cutoff", "horizon", "asset_class", "validation_report"],
+  "future_runtimes": ["tensorflow-lite", "onnx"],
+  "installed_runtime": null,
+  "trained_artifact": null,
+  "promotion": "Reject artifact without purged out-of-sample report, calibration evidence, parity tests, timestamp validation and explicit operator promotion."
+}
