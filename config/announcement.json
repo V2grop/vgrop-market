@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "enabled": false,
+  "enabled": true,
   "id": "notice-001",
   "title": "خبر تازه از VGrop",
   "text": "متن دلخواه شما اینجا نمایش داده می‌شود.",
