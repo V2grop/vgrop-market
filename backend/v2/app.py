@@ -12,7 +12,7 @@ async def lifespan(app):
     if len(os.environ.get('VGROP_ACCESS_TOKEN',''))<32:raise RuntimeError('Configure a random VGROP_ACCESS_TOKEN of at least 32 characters')
     if not os.environ.get('DATABASE_URL'):raise RuntimeError('DATABASE_URL required')
     yield
-app=FastAPI(title='VGrop Market data service',version='0.14.1',lifespan=lifespan)
+app=FastAPI(title='VGrop Market data service',version='0.15.0',lifespan=lifespan)
 security=HTTPBearer(auto_error=False)
 def authorized(c:Annotated[HTTPAuthorizationCredentials|None,Depends(security)]):
     expected=os.environ.get('VGROP_ACCESS_TOKEN','')
@@ -26,7 +26,7 @@ def capabilities():return {'trained_model':False,'calibrated_probabilities':Fals
 def instruments(limit:int=Query(100,ge=1,le=600)):
     with db() as c:return c.execute('SELECT * FROM instruments ORDER BY id LIMIT %s',(limit,)).fetchall()
 @app.get('/v1/candles/{instrument_id}',dependencies=[Depends(authorized)])
-def candles(instrument_id:int,interval_seconds:Literal[3600,86400]=3600,limit:int=Query(1000,ge=1,le=5000)):
+def candles(instrument_id:int,interval_seconds:Literal[60,300,3600,86400]=3600,limit:int=Query(1000,ge=1,le=5000)):
     with db() as c:
         rows=c.execute('SELECT open_time,open,high,low,close,volume,received_at FROM candles WHERE instrument_id=%s AND interval_seconds=%s ORDER BY open_time DESC LIMIT %s',(instrument_id,interval_seconds,limit)).fetchall()
     return {'instrument_id':instrument_id,'interval_seconds':interval_seconds,'closed_candles':list(reversed(rows)),'coverage':'stored history; check timestamps before inference'}

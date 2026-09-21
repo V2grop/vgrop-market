@@ -7,6 +7,7 @@ public final class ReportHandoff {
   b.append("نماد: ").append(report.optString("symbol")).append(" • نوع: ").append(report.optString("kind")).append("\nزمان گزارش Unix: ").append(report.optLong("generated_at")).append("\n");
   b.append("\nسبک‌های انتخابی و نتیجه/داده مفقود:\n").append(report.optString("style_mode")).append("\n").append(report.optString("style_audit"));
   b.append("\nلطفاً با همین سبک‌های انتخابی تحلیل کن. برای سبک فاقد داده، ابتدا داده تازه و منبع قابل استناد تهیه کن؛ اگر ابزار یا داده نداری صریح بگو. درصد ساختگی نده و هیچ روش را بدون اعلام جایگزین نکن.\n");
+  if(report.has("scalp"))b.append("\nاسکلپ ۵ دقیقه‌ای؛ تصویر لحظه‌ای و غیرکالیبره:\n").append(report.optJSONObject("scalp"));
   JSONArray sources=report.optJSONArray("sources");
   if(sources!=null)for(int i=0;i<sources.length();i++){
    JSONObject e=sources.optJSONObject(i);if(e==null)continue;

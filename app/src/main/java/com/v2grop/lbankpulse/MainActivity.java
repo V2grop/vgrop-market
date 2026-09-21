@@ -56,6 +56,7 @@ public final class MainActivity extends Activity {
         getWindow().setNavigationBarColor(NAVY);
         FundAlertJob.schedule(this);
         showShell();
+        if(state!=null&&state.containsKey("selected_symbol"))selected=new MarketItem(state.getString("selected_symbol"),state.getString("selected_display"),state.getString("selected_kind"));
         showFavorites();
     }
 
@@ -159,16 +160,20 @@ public final class MainActivity extends Activity {
             clear.setOnClickListener(v->search.setText(""));searchBox.addView(clear,new LinearLayout.LayoutParams(dp(44),dp(44)));
             content.addView(searchBox,spaced(-1,dp(60),5));
             TextView resultCount=text(allMarkets.size()+" بازار فعال",12,MUTED,false);content.addView(resultCount,spaced(-1,-2,8));
-            LinearLayout list=column();content.addView(list);
-            for (MarketItem item : allMarkets) addMarketCard(item, list);
+            androidx.recyclerview.widget.RecyclerView list=new androidx.recyclerview.widget.RecyclerView(this);
+            list.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+            MarketAdapter adapter=new MarketAdapter((item,parent)->addMarketCard(item,parent));list.setAdapter(adapter);
+            content.addView(list,new LinearLayout.LayoutParams(-1,dp(480)));adapter.submitList(new ArrayList<>(allMarkets));
+            TextView empty=cardText("بازاری پیدا نشد؛ نام یا نماد دیگری را امتحان کن.",AMBER);empty.setVisibility(View.GONE);content.addView(empty);
             search.addTextChangedListener(new android.text.TextWatcher(){
                 public void beforeTextChanged(CharSequence s,int st,int c,int a){}
                 public void onTextChanged(CharSequence s,int st,int before,int count){
-                    list.removeAllViews();int found=0;
-                    for(MarketItem m:allMarkets)if(MarketSearch.matches(m,s.toString())){addMarketCard(m,list);found++;}
+                    List<MarketItem> matches=new ArrayList<>();
+                    for(MarketItem m:allMarkets)if(MarketSearch.matches(m,s.toString()))matches.add(m);
+                    int found=matches.size();adapter.submitList(matches);empty.setVisibility(found==0?View.VISIBLE:View.GONE);
                     clear.setVisibility(s.length()==0?View.GONE:View.VISIBLE);
                     resultCount.setText(s.length()==0?allMarkets.size()+" بازار فعال":found+" نتیجه برای «"+s+"»");
-                    if(found==0)list.addView(cardText("بازاری با این نام یا نماد پیدا نشد. املای نام را بررسی کن.",AMBER),spaced(-1,-2,8));
+
                 }
                 public void afterTextChanged(android.text.Editable e){}
             });
@@ -279,7 +284,9 @@ public final class MainActivity extends Activity {
         addLivePrice(item);
         addChatGptHandoff(report);
         Button refresh=button("به‌روزرسانی تحلیل");refresh.setOnClickListener(v->showAnalysis(item));content.addView(refresh,spaced(-1,dp(48),8));
+        addScalpCard(item,report);
         renderScenarioWeights(report);
+        addMarketContext();
         org.json.JSONArray chartSources=report.optJSONArray("sources");
         if(chartSources!=null)for(int i=0;i<chartSources.length();i++){org.json.JSONObject src=chartSources.optJSONObject(i);if(src==null||!src.optString("name").equals("technical"))continue;org.json.JSONObject d=src.optJSONObject("data");if(d==null)continue;org.json.JSONArray points=d.optJSONArray("chart_closes");if(points!=null&&points.length()>1){content.addView(text("نمودار بسته‌شدن ساعتی • "+d.optString("source"),15,CYAN,true));content.addView(new PriceChart(this,points),spaced(-1,dp(190),10));}}
 
@@ -302,7 +309,7 @@ public final class MainActivity extends Activity {
                 continue;
             }else if(name.equals("fundamentals")){
                 name="تحلیل بنیادی • CoinGecko";
-                body="ارزش بازار (دلار): "+value(d,"market_cap_usd")+"\nارزش کاملاً رقیق‌شده: "+value(d,"fdv_usd")+"\nعرضه در گردش: "+value(d,"circulating_supply")+"\nحداکثر عرضه: "+value(d,"max_supply")+"\n"+d.optString("assessment")+"\n"+d.optString("limitations")+"\nبه‌روزرسانی منبع: "+value(d,"source_updated_at");
+                body="ارزش بازار (دلار): "+value(d,"market_cap_usd")+"\nارزش کاملاً رقیق‌شده: "+value(d,"fdv_usd")+"\nعرضه در گردش: "+value(d,"circulating_supply")+"\nحجم (دلار): "+value(d,"volume_usd")+"\nتورم عرضه / آزادسازی توکن: ناموجود"+"\nحداکثر عرضه: "+value(d,"max_supply")+"\n"+d.optString("assessment")+"\n"+d.optString("limitations")+"\nبه‌روزرسانی منبع: "+value(d,"source_updated_at");
             }else if(name.equals("daily")||name.equals("btc_daily")){
                 name=(name.equals("btc_daily")?"زمینه BTC روزانه • ":"تاریخچه روزانه • ")+d.optString("source");body=d.optInt("closed_candles")+" کندل بسته‌شده روزانه • "+d.optString("kind")+"\n"+d.optString("basis_note");
             }else if(name.equals("technical")||name.equals("btc_hourly")){
@@ -336,10 +343,39 @@ public final class MainActivity extends Activity {
             final String q=question.getText().toString();
             io.execute(()->{try{
                 org.json.JSONObject payload=new org.json.JSONObject().put("symbol",baseSymbol(item)).put("kind",kind(item)).put("question",q);
-                org.json.JSONObject result=BackendApi.call(prefs.getString("backend",""),prefs.getString("token",""),"/ai",payload);
+                org.json.JSONObject result=BackendApi.call(prefs.getString("backend",""),SecureTokenStore.read(this),"/ai",payload);
                 runOnUiThread(()->{if(request==generation){answer.setText(result.optString("answer"));answer.setTextIsSelectable(true);ask.setEnabled(true);}});
             }catch(Exception e){runOnUiThread(()->{if(request==generation){answer.setText(e.getMessage());ask.setEnabled(true);}});}});
         });
+    }
+
+    private void addScalpCard(MarketItem item,org.json.JSONObject report){
+        LinearLayout card=column();styleCard(card);card.setPadding(dp(14),dp(14),dp(14),dp(14));
+        card.addView(text("اسکلپ ۵ دقیقه‌ای",21,CYAN,true));
+        card.addView(text("وزن سناریو • پژوهشی و کالیبره‌نشده",12,AMBER,false));
+        TextView details=text("در حال دریافت کندل بسته و دفتر سفارش…",13,MUTED,false);card.addView(details);
+        LinearLayout values=row();card.addView(values);content.addView(card,spaced(-1,-2,12));
+        Button refresh=button("تازه‌سازی اسکلپ ۵ دقیقه‌ای");card.addView(refresh);
+        final int request=generation;
+        Runnable load=()->{refresh.setEnabled(false);values.removeAllViews();details.setText("دریافت داده تازه اسکلپ…");io.execute(()->{
+            org.json.JSONObject r;try{r=new ScalpRepository().analyze(item.symbol,kind(item));}catch(Exception e){try{r=ScalpEngine.unavailable(e.getMessage());}catch(Exception impossible){return;}}
+            final org.json.JSONObject result=r;runOnUiThread(()->{if(request!=generation||isFinishing())return;refresh.setEnabled(true);
+                try{report.put("scalp",result);}catch(Exception ignored){}
+                com.v2grop.lbankpulse.data.CacheStore.record(this,result.optString("instrument",item.symbol+":"+kind(item)),300,"analysis",result.optString("source","unavailable"),kind(item),result.optLong("last_closed_at"),result.optLong("generated_at"),10000,result.toString());
+                details.setText((result.optBoolean("abstain",true)?"عدم معامله • ":"پژوهشی • ")+result.optString("regime")+"\n"+result.optString("reason")+"\n"+
+                    result.optString("source")+" • "+result.optString("kind")+" • "+result.optString("quote")+"\nکندل: "+result.optInt("interval_seconds")+" ثانیه • تعداد: "+result.optInt("candles")+
+                    "\nآخرین بسته‌شدن: "+(result.has("last_closed_at")?new Date(result.optLong("last_closed_at")):"ناموجود")+"\nسن داده: "+result.optLong("age_seconds")+" ثانیه"+
+                    "\nکیفیت: "+result.optString("quality")+"\nنقدشوندگی: "+result.optString("liquidity")+" • نوسان: "+result.optString("volatility")+
+                    "\nاسپرد (bp): "+(result.has("spread_bps")?result.optDouble("spread_bps"):"ناموجود")+" • قدرت: "+String.format(Locale.US,"%.2f",result.optDouble("signal_strength",0))+
+                    "\nموافق رشد: "+result.optString("bullish_reasons")+"\nموافق نزول: "+result.optString("bearish_reasons")+"\nمحاسبه: "+new Date(result.optLong("generated_at"))+
+                    "\nاین تصویر لحظه‌ای است؛ پس از ۱۰ ثانیه دفتر سفارش نیازمند تازه‌سازی است.");
+                org.json.JSONObject w=result.optJSONObject("scenario_weights");if(w!=null){String[] k={"up","neutral","down"},labels={"صعود","خنثی","نزول"};int[] colors={GREEN,AMBER,RED};for(int j=0;j<3;j++){LinearLayout box=column();TextView number=text(w.optInt(k[j])+"٪",29,colors[j],true);box.addView(number);box.addView(text(labels[j],12,MUTED,false));android.widget.ProgressBar bar=new android.widget.ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);bar.setMax(100);bar.setProgress(w.optInt(k[j]));bar.setProgressTintList(android.content.res.ColorStateList.valueOf(colors[j]));box.addView(bar);values.addView(box,new LinearLayout.LayoutParams(0,-2,1));}}
+            });
+        });};refresh.setOnClickListener(v->load.run());load.run();
+    }
+    private void addMarketContext(){
+        TextView info=cardText("دریافت زمینه بازار • بدون وزن در پیش‌بینی…",MUTED);content.addView(info,spaced(-1,-2,10));final int request=generation;
+        io.execute(()->{org.json.JSONObject data=MarketContext.load();runOnUiThread(()->{if(request!=generation||isFinishing())return;StringBuilder b=new StringBuilder("زمینه بازار • صرفاً اطلاع‌رسانی\n");for(String key:new String[]{"dominance","fear_greed"}){org.json.JSONObject d=data.optJSONObject(key);b.append(key.equals("dominance")?"سلطه BTC: ":"ترس و طمع: ");if(d==null||!d.has("value"))b.append("ناموجود");else b.append(d.optDouble("value")).append(" • ").append(d.optString("source")).append(d.optBoolean("stale")?" • قدیمی":" • تازه").append(" • ").append(new Date(d.optLong("timestamp")*1000));b.append("\n");}info.setText(b.toString());});});
     }
 
     private void renderScenarioWeights(org.json.JSONObject report){
@@ -507,15 +543,15 @@ public final class MainActivity extends Activity {
         enabled.setText("فعال‌کردن هوش مصنوعی اختیاری");enabled.setTextColor(TEXT);
         enabled.setChecked(prefs.getBoolean("ai_enabled",false));content.addView(enabled,spaced(-1,dp(55),10));
         EditText backend = input("نشانی سرور؛ مثال: https://api.example.com", prefs.getString("backend", ""));
-        EditText token = input("توکن دسترسی سرور (الزامی)", prefs.getString("token", ""));
+        EditText token = input("توکن دسترسی سرور (الزامی)", readServerToken());
         token.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         content.addView(backend, spaced(-1, dp(58), 7));
         content.addView(token, spaced(-1, dp(58), 7));
         Button save = button("ذخیره تنظیمات");
         save.setOnClickListener(v -> {
             if(enabled.isChecked()&&(!backend.getText().toString().trim().startsWith("https://")||token.getText().toString().trim().isEmpty())){Toast.makeText(this,"برای فعال‌کردن دستیار، نشانی HTTPS و توکن را وارد کنید",Toast.LENGTH_SHORT).show();return;}
-            prefs.edit().putBoolean("ai_enabled",enabled.isChecked()).putString("backend", backend.getText().toString().trim())
-                    .putString("token", token.getText().toString().trim()).apply();
+            try{SecureTokenStore.save(this,token.getText().toString().trim());}catch(Exception e){Toast.makeText(this,"ذخیره امن توکن ناموفق بود",Toast.LENGTH_LONG).show();return;}
+            prefs.edit().putBoolean("ai_enabled",enabled.isChecked()).putString("backend", backend.getText().toString().trim()).apply();
             Toast.makeText(this, "تنظیمات ذخیره شد", Toast.LENGTH_SHORT).show();
         });
         content.addView(save, spaced(-1, dp(54), 8));
@@ -532,6 +568,7 @@ public final class MainActivity extends Activity {
         content.addView(cardText("تکنیکال، بنیادی، خبرهای منابع پشتیبانی‌شده و مقایسه صرافی‌ها داخل اپ اجرا می‌شوند. تنها گفت‌وگو با هوش مصنوعی به سرور نیاز دارد. درصدهای احتمالاتی هنوز اعتبارسنجی نشده‌اند.", CYAN), spaced(-1, -2, 8));
     }
 
+    private String readServerToken(){try{return SecureTokenStore.read(this);}catch(Exception e){Toast.makeText(this,"توکن امن قابل خواندن نیست؛ دوباره وارد کنید",Toast.LENGTH_LONG).show();return "";}}
     private void showError(String title, Exception error) {
         content.removeAllViews();
         content.addView(text(title, 21, RED, true));
@@ -621,6 +658,7 @@ public final class MainActivity extends Activity {
         return String.format(Locale.US, "$%.8f", p);
     }
 
+    @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putString("selected_symbol",selected.symbol);state.putString("selected_display",selected.display);state.putString("selected_kind",selected.marketType);}
     @Override protected void onDestroy() {
         priceHandler.removeCallbacksAndMessages(null);priceLoop=null;
         if(analysisTask!=null)analysisTask.cancel(true);

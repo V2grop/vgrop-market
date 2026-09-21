@@ -40,3 +40,19 @@ Legacy backend/server.py retains the current app AI contract. backend/v2 adds a 
 - Rate-limit/retry budgets, on-device cache, policy/license review for each data source, database migrations/backups, dependency audit, TLS deployment and monitoring.
 - Multi-asset/time-period purged walk-forward validation including fees/funding/slippage, independent untouched final test, calibrated Brier/reliability metrics, uncertainty intervals and abstention coverage.
 - No claim of low error or profitability before those gates pass. No automated trading endpoints.
+
+## v0.15.0 incremental migration
+The legacy Java engines remain the compatibility baseline. The independent ScalpEngine uses immutable InstrumentId/ClosedCandle/OrderBookSnapshot domain types. ScalpRepository performs metadata verification and provider decoding. Scalp requests and errors are isolated from the previous analysis modes. MainActivity renders a separate 5M card above 4H and includes its snapshot in manual ChatGPT export.
+
+Build now uses Gradle 8.9 / AGP8.7.3 and Kotlin2.0.21, retaining build-direct.sh as the entry point. Room2.6.1 stores provenance/expiry-bearing analysis history and mirrors watchlist saves. Existing watchlist preferences remain canonical for upgrade compatibility; cache migration is additive, no destructive fallback. ResearchCacheRepository and a StateFlow history ViewModel are the first data/presentation seams; the ViewModel is not wired into the legacy Activity yet. Catalog uses RecyclerView/ListAdapter/DiffUtil. Full MVVM, Material3 and Retrofit/Ktor conversion remains pending.
+
+Room never supplies unmarked stale data to inference. All live scalp data is fetched anew; analysis cache is for history only. Raw candle/book cache and instrument mapping persistence are pending. No claim that all requested caches are active.
+
+Optional context: CoinGecko global BTC market-cap share and Alternative.me Fear & Greed, with source time, retrieval time, explicit unavailable/stale states. Neither enters model scores. Existing official news now includes machine-readable macro/project categories and asset scope; exchange/regulatory coverage remains unavailable. Fundamentals add volume and explicit missing unlock/inflation fields.
+
+Backend v2 supports 1m/5m/1h/1d Binance spot collection with runtime metadata checks, strict OHLCV validation, primary-key deduplication and separate instrument identities. Additive SQL adds scalp analyses and book snapshot tables; historical book collector is not implemented. No exchange merge or live trading.
+
+## Security migration
+Server access tokens use AES-GCM with a key generated in Android Keystore. Plain legacy token is removed only after encrypted storage succeeds. Backup stays disabled. No wallet/exchange private key or OpenAI key is requested by the APK. Keystore failure requires re-entry rather than silently using plaintext.
+
+Debug prereleases retain the public compatibility certificate. Production must use a separately protected upload key / Play App Signing, CI secret injection, restricted release environment and certificate audit. The public debug identity is not a production trust anchor; moving to a different production certificate requires a supported signing lineage or a separate installation/application identity. No production key is generated or committed here.

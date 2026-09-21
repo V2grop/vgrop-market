@@ -4,6 +4,10 @@ public final class MarketSearchTest {
     public static void main(String[] args) {
         MarketItem btc = new MarketItem("btc_usdt", "BTC / USDT", "نقدی");
         MarketItem doge = new MarketItem("doge_usdt", "DOGE / USDT", "نقدی");
+        check(MarketSearch.matches(btc, "بیت‌کوین"), "ZWNJ");
+        check(MarketSearch.matches(btc, "بیتکوین"), "joined");
+        check(MarketSearch.matches(btc, "BTC/USDT"), "slash");
+        check(MarketSearch.matches(btc, "btc_usdt"), "underscore");
         check(MarketSearch.matches(btc, "BTC"), "symbol");
         check(MarketSearch.matches(btc, "btc usdt"), "pair tokens");
         check(MarketSearch.matches(btc, "بیت کوین"), "Persian name");

@@ -26,3 +26,18 @@ CREATE TABLE IF NOT EXISTS analyses (
  UNIQUE(instrument_id,horizon_hours,as_of,model_version)
 );
 CREATE INDEX IF NOT EXISTS candle_lookup ON candles(instrument_id,interval_seconds,open_time DESC);
+
+-- Additive migration: existing hourly analysis API remains intact.
+ALTER TABLE instruments ADD COLUMN IF NOT EXISTS contract_multiplier double precision NOT NULL DEFAULT 1 CHECK(contract_multiplier>0);
+CREATE TABLE IF NOT EXISTS scalp_analyses (
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ instrument_id bigint NOT NULL REFERENCES instruments(id), horizon_seconds integer NOT NULL CHECK(horizon_seconds=300),
+ as_of timestamptz NOT NULL, model_version text NOT NULL,
+ scenario_weights jsonb, abstain boolean NOT NULL, quality jsonb NOT NULL, provenance jsonb NOT NULL,
+ UNIQUE(instrument_id,horizon_seconds,as_of,model_version)
+);
+CREATE TABLE IF NOT EXISTS order_book_snapshots (
+ instrument_id bigint NOT NULL REFERENCES instruments(id), source_time bigint NOT NULL,
+ retrieved_at timestamptz NOT NULL DEFAULT now(), bids jsonb NOT NULL, asks jsonb NOT NULL,
+ PRIMARY KEY(instrument_id,source_time)
+);

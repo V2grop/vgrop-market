@@ -59,7 +59,7 @@ public final class MarketSearch {
     static String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.US)
                 .replace('ي', 'ی').replace('ك', 'ک')
-                .replace('_', ' ').replace('/', ' ').replace('-', ' ')
+                .replace('\u200c', ' ').replace('\u200d', ' ').replace('_', ' ').replace('/', ' ').replace('-', ' ')
                 .replaceAll("\\s+", " ");
     }
 }

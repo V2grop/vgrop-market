@@ -78,7 +78,7 @@ public final class LocalResearch {
         JSONObject d=get(url);if(!d.getString("symbol").equalsIgnoreCase(s))throw new IOException("Identity mismatch");
         JSONObject m=d.getJSONObject("market_data");Double cap=num(m.getJSONObject("market_cap").opt("usd")),fdv=num(m.getJSONObject("fully_diluted_valuation").opt("usd"));
         return obj("source","CoinGecko","url","https://www.coingecko.com/en/coins/"+id,"retrieved_at",now(),"source_updated_at",d.opt("last_updated"),
-            "market_cap_usd",cap,"fdv_usd",fdv,"circulating_supply",num(m.opt("circulating_supply")),"max_supply",num(m.opt("max_supply")),
+            "market_cap_usd",cap,"fdv_usd",fdv,"circulating_supply",num(m.opt("circulating_supply")),"max_supply",num(m.opt("max_supply")),"volume_usd",m.optJSONObject("total_volume")==null?null:num(m.getJSONObject("total_volume").opt("usd")),"supply_inflation",null,"token_unlocks",null,
             "assessment",cap!=null&&cap>0&&fdv!=null&&fdv/cap>2?"ارزش رقیق‌شده بیش از دو برابر ارزش بازار است؛ ریسک افزایش عرضه نیازمند بررسی است.":"عرضه و ارزش بازار به‌تنهایی برای قضاوت درباره ارزش پروژه کافی نیست.",
             "limitations","زمان آزادسازی، تمرکز دارندگان و درآمد پروژه در این داده گزارش نشده‌اند.");
     }
@@ -271,7 +271,7 @@ public final class LocalResearch {
                 Element e=(Element)nodes.item(i);String date=tag(e,"pubDate"),link=tag(e,"link");
                 long stamp;try{SimpleDateFormat parser=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z",Locale.US);parser.setLenient(false);stamp=parser.parse(date).getTime()/1000;}catch(Exception ex){continue;}
                 if(stamp>now()||stamp<now()-7*86400||!link.startsWith("https://"))continue;
-                items.put(obj("title",tag(e,"title"),"source",f[0],"source_url",link,"published_at",stamp,"scope",f[0].equals("Federal Reserve")?"کلان اقتصادی":"پروژه"));count++;
+                items.put(obj("title",tag(e,"title"),"source",f[0],"source_url",link,"published_at",stamp,"scope",f[0].equals("Federal Reserve")?"کلان اقتصادی":"پروژه","category",f[0].equals("Federal Reserve")?"macro":"project","asset_scope",f[0].equals("Federal Reserve")?"global":s));count++;
             }statuses.put(obj("source",f[0],"status","ok"));
         }catch(Exception e){statuses.put(obj("source",f[0],"status","unavailable"));}}
         return obj("items",items,"sources",statuses,"coverage","دریافت مستقیم اخبار رسمی کلان؛ پوشش اختصاصی پروژه فعلاً فقط ETH. پوشش کامل خبر یا رویداد آینده تضمین نمی‌شود.");
