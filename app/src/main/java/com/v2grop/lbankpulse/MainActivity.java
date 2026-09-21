@@ -43,6 +43,15 @@ public final class MainActivity extends Activity {
     private final LocalResearch local = new LocalResearch();
     private java.util.concurrent.Future<?> analysisTask;
     private LinearLayout content;
+    private LinearLayout announcementSlot;
+    private AnnouncementStore announcementStore;
+    private final android.os.Handler noticeHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+    private boolean noticeLoading;
+    private long noticeAttempt;
+    private final Runnable noticeTick=new Runnable(){public void run(){
+        if(!foreground || isDestroyed())return;
+        renderAnnouncement();refreshAnnouncement();noticeHandler.postDelayed(this,60000);
+    }};
     private int generation=0;
     private final android.os.Handler priceHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     private Runnable priceLoop;
@@ -79,6 +88,9 @@ public final class MainActivity extends Activity {
         header.addView(title,new LinearLayout.LayoutParams(0,-2,1));
         android.widget.ImageView logo=new android.widget.ImageView(this);logo.setImageResource(R.drawable.ic_launcher);logo.setContentDescription("نشان VGrop market");header.addView(logo,new LinearLayout.LayoutParams(dp(40),dp(40)));
         root.addView(header);
+        announcementStore=new AnnouncementStore(this);
+        announcementSlot=column();announcementSlot.setVisibility(View.GONE);
+        root.addView(announcementSlot,new LinearLayout.LayoutParams(-1,-2));
 
         ScrollView scroll = new ScrollView(this);
         content = column();
@@ -119,32 +131,51 @@ public final class MainActivity extends Activity {
     }
 
     private void showFavorites() {
-        reset("دیده‌بان بازار", "بازارهای منتخب شما • جابه‌جایی با ↑ و ↓ • ذخیره خودکار");
-        SharedPreferences prefs=getSharedPreferences("watchlist",MODE_PRIVATE);
+        reset("دیده‌بان بازار", "برای جابه‌جایی، ردیف ارز را نگه دارید و بکشید • ذخیره خودکار");
         List<MarketItem> items=Watchlist.load(this);
         Button defaults=button("بازگرداندن فهرست پیش‌فرض");
-        defaults.setOnClickListener(v->{Watchlist.save(this,Favorites.defaults());showFavorites();});content.addView(defaults,spaced(-1,dp(48),10));
-        LinearLayout list=column();content.addView(list);
-        renderFavorites(list,items,prefs);
-        if(items.isEmpty())content.addView(cardText("فهرست خالی است؛ در همه بازارها ☆ را بزن تا بازار دلخواه اضافه شود.",CYAN),spaced(-1,-2,12));
+        defaults.setOnClickListener(v->{Watchlist.save(this,Favorites.defaults());showFavorites();});
+        content.addView(defaults,spaced(-1,dp(48),10));
+        if(!items.isEmpty()) {
+            androidx.recyclerview.widget.RecyclerView list=new androidx.recyclerview.widget.RecyclerView(this);
+            list.setContentDescription("فهرست ارزهای قابل جابه‌جایی");
+            list.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+            WatchlistAdapter adapter=new WatchlistAdapter(items,(item,parent)->addMarketCard(item,parent,true),order->Watchlist.save(this,order));
+            list.setAdapter(adapter);adapter.touch.attachToRecyclerView(list);
+            content.addView(list,new LinearLayout.LayoutParams(-1,dp(440)));
+        } else content.addView(cardText("فهرست خالی است؛ در همه بازارها ☆ را بزن تا بازار دلخواه اضافه شود.",CYAN),spaced(-1,-2,12));
         Button browse=button("＋ افزودن ارز از همه بازارها");browse.setOnClickListener(v->showAllMarkets());content.addView(browse,spaced(-1,dp(48),12));
-        content.addView(cardText("طلا همان بازار XAUT و نفت همان XTI(CL) قبلی است. جایگاه جدید به معنی اضافه‌شدن منبع قیمت نیست؛ تحلیل نفت تا تأیید نماد و دریافت داده معتبر ممکن است ناموجود باشد.",MUTED),spaced(-1,-2,10));
+        content.addView(cardText("طلا همان بازار XAUT است. تحلیل نفت تا تأیید نماد و دریافت داده معتبر ناموجود است.",MUTED),spaced(-1,-2,10));
     }
-    private void renderFavorites(LinearLayout list,List<MarketItem> items,SharedPreferences prefs){
-        list.removeAllViews();
-        for(int index=0;index<items.size();index++){
-            final int target=index;MarketItem item=items.get(index);String key=FavoriteOrder.id(item);
-            LinearLayout wrapper=row();LinearLayout name=column();addMarketCard(item,name,true);wrapper.addView(name,new LinearLayout.LayoutParams(0,-2,1));
-            LinearLayout controls=column();Button up=button("↑"),down=button("↓");
-            up.setContentDescription("انتقال "+item.display+" به بالا");down.setContentDescription("انتقال "+item.display+" به پایین");
-            up.setEnabled(index>0);down.setEnabled(index<items.size()-1);up.setAlpha(index>0?1f:0.3f);down.setAlpha(index<items.size()-1?1f:0.3f);
-            up.setOnClickListener(v->{FavoriteOrder.move(items,target,target-1);Watchlist.save(this,items);renderFavorites(list,items,prefs);});
-            down.setOnClickListener(v->{FavoriteOrder.move(items,target,target+1);Watchlist.save(this,items);renderFavorites(list,items,prefs);});
-            controls.addView(up,new LinearLayout.LayoutParams(dp(44),dp(40)));
-            controls.addView(down,new LinearLayout.LayoutParams(dp(44),dp(40)));
-            LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(dp(44),-2);cp.setMargins(dp(6),0,0,0);
-            wrapper.addView(controls,cp);list.addView(wrapper,spaced(-1,-2,6));
+
+    private void refreshAnnouncement(){
+        long elapsed=android.os.SystemClock.elapsedRealtime();
+        if(noticeLoading || (noticeAttempt>0 && elapsed-noticeAttempt<AnnouncementStore.REFRESH_MS))return;
+        noticeAttempt=elapsed;noticeLoading=true;
+        io.execute(()->{announcementStore.refresh();runOnUiThread(()->{noticeLoading=false;if(!isDestroyed()&&foreground)renderAnnouncement();});});
+    }
+
+    private void renderAnnouncement(){
+        Announcement notice=announcementStore.current(System.currentTimeMillis());
+        announcementSlot.removeAllViews();
+        announcementSlot.setVisibility(notice==null?View.GONE:View.VISIBLE);
+        if(notice==null)return;
+        LinearLayout banner=column();banner.setPadding(dp(14),dp(10),dp(14),dp(10));
+        GradientDrawable background=new GradientDrawable(GradientDrawable.Orientation.TR_BL,
+            new int[]{Color.rgb(74,32,112),Color.rgb(23,43,68)});
+        background.setCornerRadius(dp(18));background.setStroke(dp(1),Color.rgb(133,82,184));banner.setBackground(background);
+        LinearLayout headline=row();headline.setGravity(Gravity.CENTER_VERTICAL);
+        TextView label=text("اطلاعیه / تبلیغات",10,CYAN,true);headline.addView(label,new LinearLayout.LayoutParams(0,-2,1));
+        Button close=button("×");close.setTextSize(22);close.setBackgroundColor(Color.TRANSPARENT);
+        close.setContentDescription("بستن اطلاعیه");close.setOnClickListener(v->{announcementStore.dismiss(notice.id);renderAnnouncement();});
+        headline.addView(close,new LinearLayout.LayoutParams(dp(48),dp(48)));banner.addView(headline);
+        banner.addView(text(notice.title,17,TEXT,true));banner.addView(text(notice.text,14,TEXT,false));
+        if(!notice.link.isEmpty()){
+            Button action=button(notice.button);action.setTextColor(CYAN);
+            action.setOnClickListener(v->openSource(notice.link));banner.addView(action,spaced(-1,dp(48),8));
         }
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);params.setMargins(dp(14),0,dp(14),dp(8));
+        announcementSlot.addView(banner,params);
     }
 
     private void showAllMarkets() {
@@ -276,8 +307,8 @@ public final class MainActivity extends Activity {
             });
         }};priceHandler.post(priceLoop);
     }
-    @Override protected void onPause(){super.onPause();foreground=false;priceHandler.removeCallbacksAndMessages(null);}
-    @Override protected void onResume(){super.onResume();foreground=true;if(priceLoop!=null){priceHandler.removeCallbacksAndMessages(null);priceHandler.post(priceLoop);}}
+    @Override protected void onPause(){super.onPause();foreground=false;noticeHandler.removeCallbacksAndMessages(null);priceHandler.removeCallbacksAndMessages(null);}
+    @Override protected void onResume(){super.onResume();foreground=true;noticeHandler.removeCallbacksAndMessages(null);noticeHandler.post(noticeTick);if(priceLoop!=null){priceHandler.removeCallbacksAndMessages(null);priceHandler.post(priceLoop);}}
     private static String horizonLabel(int hours){return hours==4?"۴ ساعت آینده":hours==24?"۲۴ ساعت آینده":hours==168?"هفتگی • ۷ روز آینده":hours==720?"یک‌ماهه • ۳۰ روز آینده":"سه‌ماهه • ۹۰ روز آینده";}
     private void renderReport(MarketItem item,org.json.JSONObject report){
         reset(item.display+" • "+item.marketType,"تحلیل روی گوشی • "+DateFormat.getDateTimeInstance().format(new Date(report.optLong("generated_at")*1000)));
@@ -660,6 +691,7 @@ public final class MainActivity extends Activity {
 
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putString("selected_symbol",selected.symbol);state.putString("selected_display",selected.display);state.putString("selected_kind",selected.marketType);}
     @Override protected void onDestroy() {
+        generation++;noticeHandler.removeCallbacksAndMessages(null);
         priceHandler.removeCallbacksAndMessages(null);priceLoop=null;
         if(analysisTask!=null)analysisTask.cancel(true);
         io.shutdownNow();
