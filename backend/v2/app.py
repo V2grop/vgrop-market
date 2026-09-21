@@ -12,7 +12,7 @@ async def lifespan(app):
     if len(os.environ.get('VGROP_ACCESS_TOKEN',''))<32:raise RuntimeError('Configure a random VGROP_ACCESS_TOKEN of at least 32 characters')
     if not os.environ.get('DATABASE_URL'):raise RuntimeError('DATABASE_URL required')
     yield
-app=FastAPI(title='VGrop Market data service',version='0.14.0',lifespan=lifespan)
+app=FastAPI(title='VGrop Market data service',version='0.14.1',lifespan=lifespan)
 security=HTTPBearer(auto_error=False)
 def authorized(c:Annotated[HTTPAuthorizationCredentials|None,Depends(security)]):
     expected=os.environ.get('VGROP_ACCESS_TOKEN','')

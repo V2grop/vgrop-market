@@ -147,14 +147,29 @@ public final class MainActivity extends Activity {
     }
 
     private void showAllMarkets() {
-        reset("همه بازارهای LBank", "فهرست کامل بازارهای فعال مستقیماً از سرویس عمومی LBank دریافت می‌شود.");
+        reset("همه بازارهای LBank", "جست‌وجو با نماد، جفت‌ارز یا نام رایج ارز • افزودن به دیده‌بان با ☆");
         if (!allMarkets.isEmpty()) {
-            EditText search=input("جست‌وجوی نماد", ""); content.addView(search,spaced(-1,dp(52),8));
+            LinearLayout searchBox=row();styleCard(searchBox);searchBox.setPadding(dp(12),dp(3),dp(8),dp(3));
+            TextView searchIcon=text("⌕",26,CYAN,true);searchIcon.setGravity(Gravity.CENTER);searchBox.addView(searchIcon,new LinearLayout.LayoutParams(dp(42),dp(52)));
+            EditText search=input("نام یا نماد؛ مثل بیت‌کوین، BTC یا DOGE", "");
+            search.setSingleLine(true);search.setTextDirection(View.TEXT_DIRECTION_RTL);search.setBackgroundColor(Color.TRANSPARENT);
+            search.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+            searchBox.addView(search,new LinearLayout.LayoutParams(0,dp(52),1));
+            Button clear=button("×");clear.setTextSize(24);clear.setContentDescription("پاک‌کردن جست‌وجو");clear.setVisibility(View.GONE);
+            clear.setOnClickListener(v->search.setText(""));searchBox.addView(clear,new LinearLayout.LayoutParams(dp(44),dp(44)));
+            content.addView(searchBox,spaced(-1,dp(60),5));
+            TextView resultCount=text(allMarkets.size()+" بازار فعال",12,MUTED,false);content.addView(resultCount,spaced(-1,-2,8));
             LinearLayout list=column();content.addView(list);
             for (MarketItem item : allMarkets) addMarketCard(item, list);
             search.addTextChangedListener(new android.text.TextWatcher(){
                 public void beforeTextChanged(CharSequence s,int st,int c,int a){}
-                public void onTextChanged(CharSequence s,int st,int before,int count){list.removeAllViews();for(MarketItem m:allMarkets)if(m.display.toLowerCase(Locale.US).contains(s.toString().toLowerCase(Locale.US)))addMarketCard(m,list);}
+                public void onTextChanged(CharSequence s,int st,int before,int count){
+                    list.removeAllViews();int found=0;
+                    for(MarketItem m:allMarkets)if(MarketSearch.matches(m,s.toString())){addMarketCard(m,list);found++;}
+                    clear.setVisibility(s.length()==0?View.GONE:View.VISIBLE);
+                    resultCount.setText(s.length()==0?allMarkets.size()+" بازار فعال":found+" نتیجه برای «"+s+"»");
+                    if(found==0)list.addView(cardText("بازاری با این نام یا نماد پیدا نشد. املای نام را بررسی کن.",AMBER),spaced(-1,-2,8));
+                }
                 public void afterTextChanged(android.text.Editable e){}
             });
             return;

@@ -18,8 +18,8 @@ export ANDROID_HOME=/path/to/android-sdk
 bash build-direct.sh
 bash scripts/test.sh
 ```
-APK: build/direct/VGrop-market-v0.14.0-debug.apk. The public compatibility test key is intentionally retained; do not use it as a production signing key. Source/CI require no exchange or OpenAI credentials.
-Push a version tag to run build/tests and publish a **prerelease** with APK, source ZIP and SHA256 checksums. Main/PR builds upload artifacts without publishing a release.
+APK: build/direct/VGrop-market-v0.14.1-debug.apk. The public compatibility test key is intentionally retained; do not use it as a production signing key. Source/CI require no exchange or OpenAI credentials.
+Push a version tag to run build/tests and publish a **prerelease** with APK, source ZIP and SHA256 checksums. Main pushes publish the current prerelease; PR builds upload artifacts without publishing.
 
 ## Project map
 - app/: existing Java Android application and pure analysis engines

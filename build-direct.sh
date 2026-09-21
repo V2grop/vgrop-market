@@ -28,5 +28,5 @@ fi
 if [[ ! -f debug.keystore ]]; then
  keytool -genkeypair -keystore debug.keystore -storepass android -keypass android -alias androiddebugkey -dname 'CN=Android Debug,O=Android,C=US' -keyalg RSA -keysize 2048 -validity 10000
 fi
-"$bt/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out "$out/VGrop-market-v0.14.0-debug.apk" "$out/aligned.apk"
-"$bt/apksigner" verify --verbose "$out/VGrop-market-v0.14.0-debug.apk"
+"$bt/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out "$out/VGrop-market-v0.14.1-debug.apk" "$out/aligned.apk"
+"$bt/apksigner" verify --verbose "$out/VGrop-market-v0.14.1-debug.apk"

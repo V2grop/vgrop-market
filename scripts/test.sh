@@ -8,7 +8,7 @@ if [[ ! -f build/test-libs/json.jar ]]; then
 fi
 cp="build/test-libs/json.jar:$ANDROID_HOME/platforms/android-35/android.jar"
 javac -cp "$cp" -d build/test-classes app/src/main/java/com/v2grop/lbankpulse/*.java build/direct/generated/com/v2grop/lbankpulse/R.java tests/*.java research/*.java
-for t in ScenarioEngineTest LocalResearchTest StyleTest LongTermTest DailyFallbackTest AdaptiveTest HandoffTest WatchlistTest FundCalendarTest; do
+for t in ScenarioEngineTest LocalResearchTest StyleTest LongTermTest DailyFallbackTest AdaptiveTest HandoffTest WatchlistTest FundCalendarTest MarketSearchTest; do
  java -cp "build/test-classes:$cp" "com.v2grop.lbankpulse.$t"
 done
 python3 -m unittest discover -s research -p 'test_*.py'
