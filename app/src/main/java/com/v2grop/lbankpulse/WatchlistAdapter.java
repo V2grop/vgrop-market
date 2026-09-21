@@ -5,7 +5,6 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.core.view.ViewCompat;
-import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
@@ -17,7 +16,6 @@ final class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Holde
     private final MarketAdapter.Renderer renderer;
     private final java.util.function.Consumer<List<MarketItem>> save;
     final ItemTouchHelper touch;
-    private boolean dragging;
 
     WatchlistAdapter(List<MarketItem> items,MarketAdapter.Renderer renderer,
                      java.util.function.Consumer<List<MarketItem>> save) {
@@ -30,16 +28,13 @@ final class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Holde
             }
             @Override public void onSwiped(@NonNull RecyclerView.ViewHolder h,int direction){}
             @Override public void onSelectedChanged(RecyclerView.ViewHolder h,int state){
-                dragging=state==ItemTouchHelper.ACTION_STATE_DRAG;
-                if(h!=null && dragging){
+                if(h!=null && state==ItemTouchHelper.ACTION_STATE_DRAG){
                     h.itemView.setAlpha(.88f);h.itemView.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
-                    h.itemView.getParent().requestDisallowInterceptTouchEvent(true);
                 }
                 super.onSelectedChanged(h,state);
             }
             @Override public void clearView(@NonNull RecyclerView r,@NonNull RecyclerView.ViewHolder h){
-                super.clearView(r,h);h.itemView.setAlpha(1f);dragging=false;
-                r.getParent().requestDisallowInterceptTouchEvent(false);
+                super.clearView(r,h);h.itemView.setAlpha(1f);
                 // Position-dependent accessibility actions must follow the new order.
                 notifyItemRangeChanged(0,getItemCount());
             }
@@ -60,7 +55,8 @@ final class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Holde
     @Override public void onBindViewHolder(@NonNull Holder h,int position){
         h.root.removeAllViews();renderer.render(items.get(position),h.root);
         View card=h.root.getChildAt(0);
-        card.setOnLongClickListener(v->{if(h.getBindingAdapterPosition()==RecyclerView.NO_POSITION)return false;touch.startDrag(h);return true;});
+        // ItemTouchHelper owns long-press and parent interception. Asking RecyclerView
+        // itself to disallow interception cancels its active touch helper gesture.
         ViewCompat.addAccessibilityAction(card,"انتقال به جایگاه بالاتر",(v,args)->accessibleMove(h,-1));
         ViewCompat.addAccessibilityAction(card,"انتقال به جایگاه پایین‌تر",(v,args)->accessibleMove(h,1));
     }
